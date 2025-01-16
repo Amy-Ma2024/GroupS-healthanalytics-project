@@ -1,6 +1,6 @@
 # Introduction to Health Analytics Group Project template
 Outline for Introduction to Health Analytics student group project
-
+Group S
 ## Setup Instructions
 1. One person from the group should:
     - Fork this repository by following instructions [here](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo). Make sure you rename it!
