@@ -36,9 +36,47 @@ ggplot(df_filtered, aes(x = smoking_duration)) +
   labs(title = "Distribution of Smoking Duration (Only Current Smokers)", 
        x = "Smoking Duration (Years)", y = "Count")
 ```
+
 ##Packyear
+```{r cars}
+data_smokers <- df%>%
+  mutate(CIGSDAY=as.numeric(CIGSDAY))%>%
+  mutate(CIGSDAY1=as.numeric(CIGSDAY1))%>%
+  mutate(CIGSDAY2=as.numeric(CIGSDAY2))
+
+#Create a new variable daily_smoke
+data_smokers$daily_smoke <- apply(data[, c("CIGSDAY", "CIGSDAY1", "CIGSDAY2")], 1, max, na.rm = TRUE)
+
+
+# Remove rows where daily_smoke is 0
+data_smokers <- data_smokers[data_smokers$daily_smoke > 0, ]
+
+# Check the new variable
+summary(data_smokers$daily_smoke)
+table(data_smokers$daily_smoke)
+
+
+#Calculate packyear
+data_packyear <- df%>%
+  mutate(packyear=df$smoking_duration*df$daily_smoke/20)%>%
+  filter(packyear >= 0)  
+```
+
 
 ##family_lung_cancer
+```{r cars}
+# Filter data for the corresponding years (2010 and 2015)
+data_family <- data_smokers %>%
+  filter(YEAR %in% c(2000, 2005, 2010, 2015)) %>%  # Only keep data from 2000, 2005, 2010 and 2015
+  mutate(
+    # Generate a family lung cancer history variable: if any family member has lung cancer, set it to 1, otherwise set it to 0
+    family_lung_cancer = ifelse(
+      BMLGCAN == 1 | BFLGCAN == 1 | FBLGCAN == 1 | FSLGCAN == 1 | BDLGCAN == 1 | BSLGCAN == 1, 1, 0
+    )
+  )
+
+```
+
 
 ## Compute Descriptive Statistics for Sex
 ```{r}
