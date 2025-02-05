@@ -1,0 +1,36 @@
+library(dplyr)
+library(readr)
+setwd("~/Desktop")  
+nhis_00014 <- read_csv("nhis_00014.csv")  
+
+## Smoking Duration data processing
+# Ensure SMOKESTATUS2 is numeric
+df <- nhis_00014 %>%
+  mutate(SMOKESTATUS2 = as.numeric(SMOKESTATUS2))
+
+# Filter data: Keep only current smokers (SMOKESTATUS2 values 10, 11, 12, 13)
+data_smokers <- df %>%
+  filter(SMOKESTATUS2 %in% c(10, 11, 12, 13)) %>%  
+  mutate(
+    # Calculate Smoking Duration
+    smoking_duration = AGE - SMOKAGEREG
+  ) %>%
+  # Ensure smoking duration is non-negative (exclude invalid values)
+  filter(smoking_duration >= 0)
+
+# Ensure only SMOKESTATUS2 values 10, 11, 12, 13 are included
+data_smokers <- data_smokers %>%
+  filter(SMOKESTATUS2 %in% c(10, 11, 12, 13))
+
+# Check the calculated results (mean/median)
+summary(df_filtered$smoking_duration)
+
+# Verify that the filtered SMOKESTATUS2 values are correct
+table(data_smokers$SMOKESTATUS2)
+
+# Visualize the distribution of Smoking Duration
+library(ggplot2)
+ggplot(df_filtered, aes(x = smoking_duration)) + 
+  geom_histogram(binwidth = 5, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of Smoking Duration (Only Current Smokers)", 
+       x = "Smoking Duration (Years)", y = "Count")
