@@ -4,6 +4,7 @@ setwd("~/Desktop")
 nhis_00014 <- read_csv("nhis_00014.csv")  
 
 ## Smoking Duration data processing
+```{r}
 # Ensure SMOKESTATUS2 is numeric
 df <- nhis_00014 %>%
   mutate(SMOKESTATUS2 = as.numeric(SMOKESTATUS2))
@@ -34,3 +35,101 @@ ggplot(df_filtered, aes(x = smoking_duration)) +
   geom_histogram(binwidth = 5, fill = "blue", color = "black", alpha = 0.7) +
   labs(title = "Distribution of Smoking Duration (Only Current Smokers)", 
        x = "Smoking Duration (Years)", y = "Count")
+```
+##Packyear
+
+##family_lung_cancer
+
+## Compute Descriptive Statistics for Sex
+```{r}
+# Calculate the proportion of males and females
+df_filtered %>%
+  count(SEX) %>%
+  mutate(proportion = n / sum(n))  # Ensure this line is complete
+```
+### Compute Income Proportion
+```{r}
+install.packages("scales") 
+library(scales)
+
+df_filtered %>%
+  count(EARNIMP1) %>%
+  mutate(proportion = scales::percent(n / sum(n)))
+
+library(ggplot2)
+library(dplyr)
+
+# Calculate the proportion of each income category
+income_data <- df_filtered %>%
+  count(EARNIMP1) %>%
+  mutate(proportion = n / sum(n),
+         label = paste0(round(proportion * 100, 1), "%"))  # Generate percentage labels
+
+# Plot the pie chart
+ggplot(income_data, aes(x = "", y = proportion, fill = factor(EARNIMP1))) +
+  geom_bar(stat = "identity", width = 1) +  # Create bars
+  coord_polar(theta = "y") +  # Convert to polar coordinates (pie chart)
+  labs(title = "Income Category Proportion",
+       fill = "Income Category") +
+  theme_void() +  # Remove grid and axis for a cleaner pie chart look
+  geom_text(aes(label = label), position = position_stack(vjust = 0.5)) 
+```
+##CNLUNG data processing
+```{r}
+# Filter out rows where CNLUNG is NA
+df_filtered <- data_family %>% 
+  filter(!is.na(data_family$CNLUNG) & !is.na(data_family$SMOKAGEREG) & data_family$CNLUNG %in% c(0, 1))
+```
+##
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## MODEL
+```{r}
+# Model with smoking_duration
+logit_model_sd <- glm(CNLUNG ~ smoking_duration + sex + income + family_lung_cancer, 
+                   data = df_filtered, family = binomial)
+summary(logit_model_sd)
+plot(logit_model_sd, 1)
+plot(logit_model_sd, 2)
+
+# Model with packyear
+logit_model_py <- glm(CNLUNG ~ smoking_duration + packyear + sex + income + family_lung_cancer, 
+                   data = df_filtered, family = binomial)
+summary(logit_model_py)
+plot(logit_model_py, 1)
+plot(logit_model_py, 2)
+
+# Model with both 
+logit_model <- glm(CNLUNG ~ smoking_duration + packyear + sex + income + family_lung_cancer, 
+                   data = df_filtered, family = binomial)
+
+summary(logit_model)
+plot(logit_model, 1)
+plot(logit_model, 2)
+
+# Test collinearity
+vif(logit_model)
+```
+
+## TABLE
+
+
+
+
+
+
+
