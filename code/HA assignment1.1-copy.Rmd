@@ -1,0 +1,487 @@
+---
+title: "HA assignment"
+output: pdf_document
+date: "2025-02-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(readr)
+setwd("~/Desktop")  # 设置工作目录到 Desktop
+nhis_00014 <- read_csv("nhis_00014.csv")  # 读取文件
+
+
+```
+
+## Smoking Duration数据处理
+
+smoking_duration \<- df_filtered$AGE-df_filtered$SMOKAGEREG sex = as.factor(df_filtered$SEX)  # 性别转换为因子
+income = as.numeric(df_filtered$INCIMPPOINT5) \# 确保收入分位是数值型 family_lung_cancer = as.numeric(df_filtered\$family_lung_cancer) \# 确保家族肺癌史是数值型
+
+```{r cars}
+
+# 确保 SMOKESTATUS2 是数值型
+df <- nhis_00014 %>%
+  mutate(SMOKESTATUS2 = as.numeric(SMOKESTATUS2))
+
+# 过滤数据：只保留当前吸烟者 (SMOKESTATUS2 为 10, 11, 12, 13)
+data_smokers <- df %>%
+  filter(SMOKESTATUS2 %in% c(10, 11, 12, 13)) %>%  
+  mutate(
+    # 计算 Smoking Duration
+    smoking_duration = AGE - SMOKAGEREG
+  ) %>%
+  # 确保吸烟时长非负（排除异常值）
+  filter(smoking_duration >= 0)
+
+# 确保只包含 10, 11, 12, 13
+data_smokers <- data_smokers %>%
+  filter(SMOKESTATUS2 %in% c(10, 11, 12, 13))
+
+# 检查计算结果（mean/median）
+summary(df_filtered$smoking_duration)
+
+# 检查过滤后的 SMOKESTATUS2 是否正确
+table(data_smokers$SMOKESTATUS2)
+
+# 可视化 Smoking Duration 分布
+library(ggplot2)
+ggplot(df_filtered, aes(x = smoking_duration)) + 
+  geom_histogram(binwidth = 5, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of Smoking Duration (Only Current Smokers)", 
+       x = "Smoking Duration (Years)", y = "Count")
+
+
+```
+
+## Pack Year 数据处理
+```{r cars}
+data_smokers <- data_smokers%>%
+  mutate(CIGSDAY=as.numeric(CIGSDAY))%>%
+  mutate(CIGSDAY1=as.numeric(CIGSDAY1))%>%
+  mutate(CIGSDAY2=as.numeric(CIGSDAY2))
+
+#创建新变量daily_smoke
+data_smokers$daily_smoke <- apply(data_smokers[, c("CIGSDAY", "CIGSDAY1", "CIGSDAY2")], 1, max, na.rm = TRUE)
+
+
+# 剔除 daily_smoke 为 0 的行
+data_smokers <- data_smokers[data_smokers$daily_smoke > 0, ]
+
+#计算packyear
+data_packyear <- data_smokers %>%
+  mutate(packyear = smoking_duration * daily_smoke / 20) %>%
+  filter(packyear >= 0)
+##可视化
+ggplot(df_filtered, aes(x = packyear)) +
+  geom_histogram(bins = 30, fill = "blue", alpha = 0.7, color = "black") +
+  labs(title = "Pack-Year Distribution",
+       x = "Pack-Year (Smoking Exposure)",
+       y = "Count") +
+  theme_minimal()
+  
+summary(df_filtered$packyear)
+
+```
+
+## 家庭肺癌史
+
+```{r cars}
+# 过滤符合年份的数据（2010 和 2015）
+data_family <- data_packyear %>%
+  filter(YEAR %in% c(2000, 2005, 2010)) %>%  # 仅保留 2000,2005,2010 和 2015 年的数据
+  mutate(
+    # 生成家庭肺癌史变量：如果任何家庭成员患肺癌，则设为1，否则设为0
+    family_lung_cancer = ifelse(
+      BMLGCAN == 1 | BFLGCAN == 1 | FBLGCAN == 1 | FSLGCAN == 1 | BDLGCAN == 1 | BSLGCAN == 1, 1, 0
+    )
+  )
+
+library(dplyr)
+
+# 计算 proportion（百分比）
+data_family %>%
+  count(family_lung_cancer) %>%
+  mutate(proportion = n / sum(n))
+
+#1. 绘制柱状图（Bar Chart）
+ggplot(df_filtered, aes(x = factor(family_lung_cancer))) +
+  geom_bar(fill = "blue", alpha = 0.7) +
+  labs(title = "Family Lung Cancer Distribution",
+       x = "Family Lung Cancer (1 = Yes, 0 = No)",
+       y = "Count") +
+  theme_minimal()
+# 2. 绘制按年份分组的柱状图
+ggplot(df_filtered, aes(x = factor(family_lung_cancer), fill = factor(YEAR))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Family Lung Cancer by Year",
+       x = "Family Lung Cancer (1 = Yes, 0 = No)",
+       y = "Count",
+       fill = "Year") +
+  theme_minimal()
+#3. 绘制按年份计算的比例图
+ggplot(df_filtered, aes(x = factor(YEAR), fill = factor(family_lung_cancer))) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Family Lung Cancer by Year",
+       x = "Year",
+       y = "Proportion",
+       fill = "Family Lung Cancer") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal()
+```
+###计算sex的descriptive statistics
+```{r cars}
+# 计算 male 和 female 各自的比例
+df_filtered %>%
+  count(SEX) %>%
+  mutate(proportion = n / sum(n))  # 确保这一行完整
+
+
+```
+### 计算income的proportion
+```{r}
+install.packages("scales")  # 如果未安装
+library(scales)
+
+df_filtered %>%
+  count(EARNIMP1) %>%
+  mutate(proportion = scales::percent(n / sum(n)))
+
+library(ggplot2)
+library(dplyr)
+
+# 计算各收入类别的比例
+income_data <- df_filtered %>%
+  count(EARNIMP1) %>%
+  mutate(proportion = n / sum(n),
+         label = paste0(round(proportion * 100, 1), "%"))  # 生成标签（百分比）
+
+# 绘制饼图
+ggplot(income_data, aes(x = "", y = proportion, fill = factor(EARNIMP1))) +
+  geom_bar(stat = "identity", width = 1) +  # 画柱子
+  coord_polar(theta = "y") +  # 转换为极坐标，即饼图
+  labs(title = "Income Category Proportion",
+       fill = "Income Category") +
+  theme_void() +  # 移除网格和坐标轴，使其更像饼图
+  geom_text(aes(label = label), position = position_stack(vjust = 0.5))  # 在饼图中添加百分比标签
+
+
+```
+
+```{r}
+# 过滤掉 CNLUNG 为空的行，并确保 CNLUNG 只有 0 和 1,这块不太确定是不是这么
+df_filtered <- data_family %>% 
+  filter(!is.na(data_family$CNLUNG) & !is.na(data_family$SMOKAGEREG) & data_family$CNLUNG %in% c(0, 1))
+
+
+```
+## Descriptive statistics描述性统计
+```{r}
+smoking_duration <- df_filtered$AGE-df_filtered$SMOKAGEREG
+sex = as.factor(df_filtered$SEX)  # 性别转换为因子
+income = as.numeric(df_filtered$EARNIMP1)  # 确保收入分位是数值型
+family_lung_cancer = as.numeric(df_filtered$family_lung_cancer)
+                                
+table(df_filtered$CNLUNG)
+table(df_filtered$SEX)
+table(df_filtered$family_lung_cancer)
+# 计算连续变量的均值和标准差
+summary(df_filtered[, c("smoking_duration", "INCIMPPOINT5")])
+
+# 可视化吸烟变量的分布
+library(ggplot2)
+
+ggplot(df_filtered, aes(x = smoking_duration, fill = as.factor(CNLUNG))) +
+    geom_histogram(bins = 30, position = "dodge", color = "black", alpha = 0.7) +
+    scale_fill_manual(values = c("0" = "blue", "1" = "red"), 
+                      labels = c("No Lung Cancer", "Lung Cancer")) +
+    labs(title = "吸烟年限（Smoking Duration）与肺癌的关系", 
+         x = "Smoking Duration (Years)", 
+         y = "Count",
+         fill = "Lung Cancer Status") +
+    theme_minimal()
+
+```
+
+```
+## logistic model
+
+```{r}
+logit_model_sd <- glm(CNLUNG ~ smoking_duration + sex + income + family_lung_cancer, 
+                   data = df_filtered, family = binomial)
+summary(logit_model_sd)
+plot(logit_model_sd, 1)
+plot(logit_model_sd, 2)
+
+
+logit_model_py <- glm(CNLUNG ~ smoking_duration + packyear + sex + income + family_lung_cancer, 
+                   data = df_filtered, family = binomial)
+logit_model <- glm(CNLUNG ~ smoking_duration + packyear + sex + income + family_lung_cancer, 
+                   data = df_filtered, family = binomial)
+
+summary(logit_model)
+plot(logit_model, 1)
+plot(logit_model, 2)
+resid(logit_model, type="working")
+vif(logit_model)
+```
+
+
+1.  **截距项 (Intercept) = -4.438**
+    -   这个值表示 **所有自变量取 0 时**，患肺癌的**log-odds**（对数优势比）。
+    -   由于 -4.438 非常负，说明**基准类别下患肺癌的概率极低**。
+2.  **吸烟时长 (smoking_duration)**
+    -   **系数 = 0.04315，P 值 \< 2e-16（极显著）**
+    -   **解释**：每增加 1 年吸烟时长，**患肺癌的 log-odds 增加 0.04315**。
+    -   **换算成 OR（优势比）**： $$
+        OR = e^{0.04315} = 1.044
+        $$
+        -   这意味着，每增加 1 年吸烟时长，**患肺癌的概率增加 4.4%**。
+3.  **性别 (sex2)**
+    -   **系数 = 0.5748，P 值 5.54e-09（极显著）**
+    -   说明**sex=2（可能代表男性）**比 sex=1（可能代表女性）更容易患肺癌。
+    -   **换算 OR**： $$
+        OR = e^{0.5748} = 1.776
+        $$
+        -   **解释**：如果 `sex=2`，那么**患肺癌的概率比基准类别高 77.6%**。 但这个地方我check了一下female是2
+4.  **收入 (income)**
+    -   **系数 = -1.026e-06，P 值 = 0.446（不显著）**
+    -   说明 **收入与肺癌的关系不显著**，可能是因为吸烟习惯才是主导因素，或收入的影响被其他因素吸收。
+5.  **家族肺癌史 (family_lung_cancer)**
+    -   **系数 = 0.5776，P 值 = 1.07e-08（极显著）**
+    -   **换算 OR**： $$
+        OR = e^{0.5776} = 1.781
+        $$
+        -   **解释**：如果有家族肺癌史，**患肺癌的概率比没有家族肺癌史的人高 78.1%**。
+
+------------------------------------------------------------------------
+
+## **2️⃣ 偏差分析**
+
+### **Deviance（残差偏差）**
+
+-   **Null deviance（无自变量的 deviance）** = **3564.4**
+-   **Residual deviance（加上自变量的 deviance）** = **3250.8**
+-   **减少量 = 3564.4 - 3250.8 = 313.6**
+    -   Deviance 下降，说明模型有一定的解释力。
+
+### **AIC（赤池信息准则）**
+
+-   **AIC = 3260.8**
+-   AIC 越低，模型越好。可以和其他模型比较，选择 AIC 更小的模型。
+
+------------------------------------------------------------------------
+
+## **3️⃣ 结论**
+
+✅ **吸烟时长（smoking_duration）显著影响肺癌风险**，每多吸 1 年，患病概率增加 4.4%。\
+✅ **性别影响显著**，可能是男性（sex=2）比女性（sex=1）更容易患肺癌。\
+✅ **家族肺癌史是一个强预测因子**，有家族史的个体患病概率比没有家族史的个体高 78.1%。\
+✅ **收入（income）与肺癌无显著关系**，可能需要进一步调整模型或数据。\
+✅ **模型拟合效果一般**（deviance 下降但仍有改善空间），可以考虑： - 添加 **交互项**（如 `smoking_duration * sex`） - 增加 **吸烟强度** 变量（如每日吸烟量）
+
+------------------------------------------------------------------------
+
+## **4️⃣ 下一步建议**
+
+🔹 **转换系数为 OR（优势比）**
+
+``` r
+exp(coef(logit_model))  # 计算 OR
+exp(confint(logit_model))  # 计算 OR 置信区间
+```
+
+🔹 **检验模型拟合度**
+
+``` r
+pseudo_r2 <- 1 - (logit_model$deviance / logit_model$null.deviance)
+pseudo_r2  # 计算伪 R²
+```
+
+如果 `pseudo_r2` 过低，说明模型解释力不强，可以调整变量。
+
+🔹 **可视化回归系数**
+
+``` r
+library(ggplot2)
+df_OR <- data.frame(
+  Variable = names(exp(coef(logit_model))),
+  OR = exp(coef(logit_model)),
+  Lower_CI = exp(confint(logit_model))[, 1],
+  Upper_CI = exp(confint(logit_model))[, 2]
+)
+
+ggplot(df_OR[-1, ], aes(x = Variable, y = OR)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2) +
+  coord_flip() +
+  labs(title = "Odds Ratios with 95% Confidence Intervals",
+       y = "Odds Ratio", x = "Variables")
+```
+
+------------------------------------------------------------------------
+
+## **🚀 总结**
+
+**结论**： 1. **吸烟时长** 显著影响肺癌风险。 2. **男性更易患肺癌**，性别影响显著。 3. **家族肺癌史是重要的预测因子**，影响显著。 4. **收入没有显著影响**，可能需要重新定义或分组。
+
+**优化建议**： - **考虑交互项**（如 `smoking_duration * sex`）。 - **检查吸烟强度变量**（如果有）。 - **对比不同模型（AIC/Pseudo R²）**，寻找最佳拟合。
+
+🚀 **你是否需要进一步优化模型或添加新变量？**
+
+
+## VIF检测，结果是没有大于10的
+``` {r}
+
+install.packages("car")  
+library(car)
+vif(logit_model)
+
+```
+
+```{r cars}
+##去掉income,因为上一个model里income p-value大于0.05
+logit_model_optimized <- glm(CNLUNG ~ smoking_duration + packyear + sex + family_lung_cancer,
+                             data = df_filtered, family = binomial)
+summary(logit_model_optimized)
+AIC(logit_model_optimized)
+
+logit_model_interact <- glm(CNLUNG ~ smoking_duration * sex + packyear + family_lung_cancer,
+                            data = df_filtered, family = binomial)
+summary(logit_model_interact)
+AIC(logit_model_interact)
+
+```
+
+```{r}
+install.packages("stargazer")
+library(stargazer)
+
+# 生成回归表（Latex/HTML/Text）
+stargazer(logit_model, type = "text", title = "Regression Results", 
+          dep.var.labels = "Lung Cancer Probability", 
+          covariate.labels = c("Smoking Duration", "Sex", "Income", "Family Lung Cancer"),
+          digits = 3, out = "regression_table.txt")
+
+```
+
+## **5. 稳健性检验**
+### **(1) 似然比检验（LRT）**
+如果要检验 `Smoking Duration` 是否应该留在模型中，可以进行 **似然比检验（Likelihood Ratio Test, LRT）**：
+```r
+```{r}
+##这个没写，因为我model里没加pack year
+library(lmtest)
+
+```
+
+### OR（优势比）表
+```{r}
+exp_coef <- exp(coef(logit_model))
+exp_confint <- exp(confint(logit_model))
+
+# 创建表格数据框
+or_table <- data.frame(
+  Variable = names(exp_coef),
+  OR = exp_coef,
+  Lower_CI = exp_confint[,1],
+  Upper_CI = exp_confint[,2]
+)
+
+# 打印 OR 表
+print(or_table, row.names = FALSE)
+
+# 可视化 OR 置信区间
+library(ggplot2)
+ggplot(or_table[-1, ], aes(x = Variable, y = OR)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2) +
+  coord_flip() +
+  labs(title = "Odds Ratios and 95% Confidence Intervals",
+       y = "Odds Ratio", x = "Variables")
+
+```
+
+##可视化
+##1.回归系数可视化（我觉得意义不大）
+解释
+蓝点：回归系数估计值
+黑色误差条：95% 置信区间
+如果置信区间跨过 0，说明该变量可能不显著
+变量按影响大小排序（可以调整 aes(x = reorder(Variable, Estimate)）
+```{r}
+library(ggplot2)
+
+# 提取回归系数及置信区间
+coef_df <- data.frame(
+  Variable = names(coef(logit_model)),
+  Estimate = coef(logit_model),
+  Lower_CI = confint(logit_model)[,1],
+  Upper_CI = confint(logit_model)[,2]
+)
+
+# 画出回归系数及其 95% 置信区间
+ggplot(coef_df[-1, ], aes(x = Variable, y = Estimate)) +  # 去掉 Intercept
+  geom_point(size = 3, color = "blue") +
+  geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2, color = "black") +
+  coord_flip() +  # 旋转，使变量名在 Y 轴
+  theme_minimal() +
+  labs(title = "Regression Coefficients with 95% Confidence Intervals",
+       x = "Variables", y = "Estimate")
+
+```
+##2. OR（优势比）及置信区间
+解释
+红点：优势比（OR）
+黑色误差条：95% 置信区间
+虚线 OR=1：超过 1 代表风险增加，低于 1 代表保护作用
+适用于 解释变量对肺癌的影响强度
+✅ 如果 OR = 1.78，意味着该变量使得患肺癌的风险提高 78%
+```{r}
+# 计算 OR 及置信区间
+or_df <- data.frame(
+  Variable = names(exp(coef(logit_model))),
+  OR = exp(coef(logit_model)),
+  Lower_CI = exp(confint(logit_model)[,1]),
+  Upper_CI = exp(confint(logit_model)[,2])
+)
+
+# 绘制 OR 置信区间图
+ggplot(or_df[-1, ], aes(x = Variable, y = OR)) +  # 去掉 Intercept
+  geom_point(size = 3, color = "red") +
+  geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2, color = "black") +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Odds Ratios with 95% Confidence Intervals",
+       x = "Variables", y = "Odds Ratio") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "gray")  # OR=1 作为参考线
+
+```
+
+##3. ROC 曲线（衡量模型预测能力）这个不是很确定
+```{r}
+library(pROC)
+library(ggplot2)
+
+# 确保 CNLUNG 是 0/1
+df_filtered$CNLUNG <- as.numeric(as.factor(df_filtered$CNLUNG)) - 1
+
+# 确保数据长度匹配
+df_filtered <- df_filtered %>% filter(!is.na(CNLUNG))
+df_filtered$pred <- predict(logit_model, newdata = df_filtered, type = "response")
+
+# 计算 AUC
+roc_curve <- roc(df_filtered$CNLUNG, df_filtered$pred)
+
+# 绘制 ROC 曲线
+ggplot(data.frame(TPR = roc_curve$sensitivities, FPR = 1 - roc_curve$specificities), aes(x = FPR, y = TPR)) +
+  geom_line(color = "blue", size = 1.2) +
+  geom_abline(linetype = "dashed") +
+  theme_minimal() +
+  labs(title = paste("ROC Curve (AUC =", round(auc(roc_curve), 3), ")"),
+       x = "False Positive Rate (1 - Specificity)",
+       y = "True Positive Rate (Sensitivity)")
+
+```
+
