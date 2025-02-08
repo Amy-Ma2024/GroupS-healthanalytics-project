@@ -10,7 +10,7 @@ nhis_00014 <- read_csv("nhis_00014.csv")
 
 ```{r cars}
 df <- nhis_00014 %>%
-  mutate(SMOKESTATUS2 = as.numeric(SMOKESTATUS2))
+  mutate(SMOKESTATUS2 = as.numeric(SMOKESTATUS2)) # Convert SMOKESTATUS2 to numeric type for proper filtering
 
 # Keep only current smokers (SMOKESTATUS2 is 10, 11, 12, 13)
 data_smokers <- df %>%
@@ -26,7 +26,7 @@ data_smokers <- df %>%
 ## Family lung cancer data processing
 
 ```{r cars}
-# filter siltable years
+# filter suitable years
 data_family <- data_smokers %>%
   filter(YEAR %in% c(2000, 2005, 2010)) %>%  
   mutate(
@@ -49,6 +49,7 @@ df_filtered <- data_family %>%
 
 ```{r}
 table(df_filtered$CNLUNG)
+# Calculate and display the proportion of each category in CNLUNG
 prop.table(table(df_filtered$CNLUNG))
 
 df_filtered %>%
@@ -82,6 +83,8 @@ logit_model_sd <- glm(CNLUNG ~ smoking_duration + sex + income + family_lung_can
 summary(logit_model_sd)
 
 # Test multi-collinearity
+install.packages("car")  
+library(car)
 vif(logit_model_sd, data=df_filtered)
 
 library(sandwich)  # Calculated robust standard error
@@ -92,38 +95,6 @@ robust_se <- vcovHC(logit_model_sd, type = "HC1")
 coeftest(logit_model_sd, vcov. = robust_se)  
 ```
 
-## Robustness check
-
-```{r cars}
-## Fit model without income
-logit_model_no_income <- glm(CNLUNG ~ smoking_duration + sex + family_lung_cancer,
-                             data = df_filtered, family = binomial)
-summary(logit_model_no_income)
-## Fit model with age
-age<- df_filtered$AGE
-logit_model_with_age <- glm(CNLUNG ~ smoking_duration + sex + income + family_lung_cancer + age,
-                             data = df_filtered, family = binomial)
-summary(logit_model_with_age)
-```
-
-##Heterogeneity Analysis
-
-```{r}
-df_filtered$income <- df_filtered$EARNIMP1
-logit_model_male <- glm(CNLUNG ~ smoking_duration + income + family_lung_cancer, 
-                        data = subset(df_filtered, sex == 1), family = binomial(link="logit"))
-logit_model_female <- glm(CNLUNG ~ smoking_duration + income + family_lung_cancer, 
-                          data = subset(df_filtered, sex == 2), family = binomial(link="logit"))
-
-summary(logit_model_male)
-summary(logit_model_female)
-
-##interaction
-logit_model_interaction <- glm(CNLUNG ~ smoking_duration * sex + income + family_lung_cancer, 
-                               data = df_filtered, family = binomial(link="logit"))
-summary(logit_model_interaction)
-
-```
 
 
 
