@@ -118,23 +118,30 @@ ggplot(income_data, aes(x = "", y = proportion, fill = factor(EARNIMP1))) +
 df_filtered <- data_family %>% 
   filter(!is.na(data_family$CNLUNG) & !is.na(data_family$SMOKAGEREG) & data_family$CNLUNG %in% c(0, 1))
 ```
-##
 
+##Descriptive statistics of variables
+```{r}
+table(df_filtered$CNLUNG)
+prop.table(table(df_filtered$CNLUNG))
 
+df_filtered %>%
+  summarise(
+    Mean_smoking_duration = mean(smoking_duration, na.rm = TRUE),
+    SD_smoking_duration = sd(smoking_duration, na.rm = TRUE),
+    Min_smoking_duration = min(smoking_duration, na.rm = TRUE),
+    Max_smoking_duration = max(smoking_duration, na.rm = TRUE)
+  )
 
+table(df_filtered$SEX)
+prop.table(table(df_filtered$SEX))
 
+table(df_filtered$family_lung_cancer)
+prop.table(table(df_filtered$family_lung_cancer))
 
+table(df_filtered$EARNIMP1)
+prop.table(table(df_filtered$EARNIMP1))
 
-
-
-
-
-
-
-
-
-
-
+```
 ## MODEL
 ```{r}
 # Model with smoking_duration
