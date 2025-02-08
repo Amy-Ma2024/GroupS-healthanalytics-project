@@ -99,24 +99,27 @@ coeftest(logit_model_sd, vcov. = robust_se)
 ```
 ## Robustness check
 ```{r cars}
-## Fit model without income
+# Fit model without income
 logit_model_no_income <- glm(CNLUNG ~ smoking_duration + sex + family_lung_cancer,
                              data = df_filtered, family = binomial)
 summary(logit_model_no_income)
-## Fit model with age
+# Fit model with age
 age<- df_filtered$AGE
 logit_model_with_age <- glm(CNLUNG ~ smoking_duration + sex + income + family_lung_cancer + age,
                             data = df_filtered, family = binomial)
 summary(logit_model_with_age)
 ```
-##Heterogeneity Analysis
+## Heterogeneity Analysis
 ```{r}
+# Create a new variable `income` in df_filtered by copying values from `EARNIMP1`
 df_filtered$income <- df_filtered$EARNIMP1
+# Fit a logistic regression model for male participants (sex == 1)
 logit_model_male <- glm(CNLUNG ~ smoking_duration + income + family_lung_cancer, 
                         data = subset(df_filtered, sex == 1), family = binomial(link="logit"))
+# Fit a logistic regression model for female participants (sex == 2)
 logit_model_female <- glm(CNLUNG ~ smoking_duration + income + family_lung_cancer, 
                           data = subset(df_filtered, sex == 2), family = binomial(link="logit"))
-
+# Display the summary of the logistic regression model
 summary(logit_model_male)
 summary(logit_model_female)
 
