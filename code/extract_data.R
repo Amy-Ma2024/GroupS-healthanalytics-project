@@ -5,18 +5,13 @@
 packages = (c("ipumsr", "dplyr", "ggplot2", "tidyr", "here", "rmdformats", "srvyr"))
 
 ## Now load or install&load all
-package.check <- lapply(
-  packages,
-  FUN = function(x) {
-    if (!require(x, character.only = TRUE)) {
-      install.packages(x, dependencies = TRUE)
-      library(x, character.only = TRUE)
-    }
-  }
-)
+library(dplyr)
+library(readr)
+  
+nhis_00014 <- read_csv("nhis_00014.csv")  
 
 ## Set the working directory
-setwd(here())
+setwd("~/Desktop") 
 
 ## Read in data
-data <- read_ipums_ddi("filename")
+nhis_00014 <- read_csv("nhis_00014.csv")
