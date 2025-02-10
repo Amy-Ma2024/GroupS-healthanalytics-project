@@ -85,6 +85,11 @@ logit_model_sd <- glm(CNLUNG ~ smoking_duration + sex + income + family_lung_can
                    data = df_filtered, family = binomial(link="logit"))
 summary(logit_model_sd) #Check output 
 
+# Draw figure of ROC
+probabilities <- predict(logit_model_sd, type = "response")  #Get predict probabilities
+roc_curve <- roc(df_filtered$CNLUNG, probabilities)  #Create the ROC curve object
+plot(roc_curve, main = "ROC Curve", col = "black", lwd = 2)  #Draw ROC curve
+
 # Test multi-collinearity
 install.packages("car")  
 library(car)
